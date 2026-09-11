@@ -1,0 +1,4 @@
+# Web App Notes
+
+# In order to get into venv from terminal in vscode
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
