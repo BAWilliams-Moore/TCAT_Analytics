@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>My Python Web App</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>My App</h1>
+
+        <fieldset class="connect-box">
+            <legend>Snowflake Connection</legend>
+            <label for="dsn-input">System DSN name</label>
+            <input type="text" id="dsn-input" placeholder="e.g. Snowflake_SSO" autocomplete="off">
+
+            <label for="username-input">Username</label>
+            <input type="text" id="username-input" placeholder="e.g. bawilliams@wearemoore.com" autocomplete="off">
+
+            <button id="connect-btn" type="button">Connect</button>
+            <div id="connect-status"></div>
+        </fieldset>
+
+        <label for="search-input">Search schemas</label>
+        <div class="search-row">
+            <input type="text" id="search-input" placeholder="e.g. Shriners" autocomplete="off">
+            <button id="search-btn" type="button">Search</button>
+        </div>
+
+        <label for="schema-select">Schema</label>
+        <select id="schema-select">
+            <option value="">Connect first</option>
+        </select>
+
+        <label for="table-select">Tables</label>
+        <select id="table-select" multiple size="6">
+            <option value="">Select a schema first</option>
+        </select>
+
+        <button id="add-selected-btn" type="button" class="secondary-btn">Add Selected to List</button>
+
+        <form id="item-form">
+            <input type="text" id="item-input" placeholder="Add a new item..." autocomplete="off">
+            <button type="submit">Add</button>
+        </form>
+
+        <ul id="item-list">
+            {% for item in items %}
+            <li>
+                <span>{{ item }}</span>
+                <button class="delete-btn" data-index="{{ loop.index0 }}">✕</button>
+            </li>
+            {% endfor %}
+        </ul>
+
+        <button id="run-analysis-btn" type="button" class="run-btn">Run Analysis</button>
+        <div id="analysis-status"></div>
+    </div>
+
+    <script>
+        // Seed the client-side item list with what the server rendered on page load
+        window.__INITIAL_ITEMS__ = {{ items | tojson }};
+    </script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
