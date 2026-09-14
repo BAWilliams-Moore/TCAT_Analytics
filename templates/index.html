@@ -7,9 +7,9 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
-  <aside class="sidebar">
-    <p class="brand">TCAT Analytics</p>
-    <p class="brand-kicker">Moore · internal</p>
+  <aside class="sidebar" >
+    <p class="brand" style="font-size: 24px;">TCAT Analytics</p>
+    <p class="brand-kicker">Moore · Internal</p>
     <nav aria-label="Primary">
       <a class="{% if active == 'connection' %}is-active{% endif %}" href="{{ url_for('connection') }}">Snowflake Connection</a>
       <a class="{% if active == 'comparison' %}is-active{% endif %}" href="{{ url_for('comparison') }}">Model Segments Comparison</a>
