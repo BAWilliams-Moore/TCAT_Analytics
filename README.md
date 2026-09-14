@@ -1,12 +1,12 @@
 # TCAT Analytics
 
-Flask GUI around the existing Snowflake ODBC workflow: connect once, navigate through menu option to explore various analytics from existing TCAT models.
+Web Interface (Flask GUI) where users can connect to Snowflake using ODBC connection, and navigate through various analytics options from existing TCAT models.
 
 # Overview:
 
 - **Snowflake connection** — posts `dsn` and `username` to `/api/connect` and caches the ODBC session
 - **Model segment comparison** — project search, scoring-run picker, comparison list, and heatmap PDF download
-- **Model feature comparison** — project search, modeling-run picker, then a side-by-side importance table (w/csv download)
+- **Model feature comparison** — project search, modeling-run picker, then a side-by-side feature importance (Top 20) table (w/csv download)
 
 ## Run locally
 
@@ -28,17 +28,15 @@ Set `SNOWFLAKE_DSN` / `SNOWFLAKE_USER` in `.env`, or enter them on the connectio
 
  Returns HeatMaps based on Scoring Runs selected, in a pairwise combination.
  
- Numbers displayed are pid count/10,000 for every model segment combination, with the color scale centered on the mean. 
+ Numbers displayed are pid count/10,000 for every model segment combination, with the color scale centered around the mean. 
 
  ![Model Segment Comparions Example](./images/heatmap_sample.png)
 
-## Feature importance table
+## Feature Importance Table
 
 The Top 20 Features and Importance of the selected models are displayed in a table/grid format.
 
 This visual allows for identifying where models top 20 features overlap amongst the selected models.
-
-Visual is displayed in the user interface as well a
 
 *Blank values mean that model did not have that feature in their Top 20
 
