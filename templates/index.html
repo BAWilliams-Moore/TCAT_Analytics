@@ -1,66 +1,145 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>My Python Web App</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TCAT Analytics</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
+  <aside class="sidebar">
+    <p class="brand">TCAT Analytics</p>
+    <p class="brand-kicker">Moore · internal</p>
+    <nav aria-label="Primary">
+      <a class="{% if active == 'connection' %}is-active{% endif %}" href="{{ url_for('connection') }}">Snowflake Connection</a>
+      <a class="{% if active == 'comparison' %}is-active{% endif %}" href="{{ url_for('comparison') }}">Model Segments Comparison</a>
+      <a class="{% if active == 'features' %}is-active{% endif %}" href="{{ url_for('features') }}">Model Features Comparison</a>
+    </nav>
+    <div class="sidebar-foot">
+      <p>{{ nav_status.mode }}</p>
+      {% if nav_status.dsn %}
+      <p>{{ nav_status.dsn }}{% if nav_status.username %} · {{ nav_status.username }}{% endif %}</p>
+      {% endif %}
+    </div>
+  </aside>
+
+  <div class="page">
     <div class="container">
-        <h1>My App</h1>
 
+      <!-- SNOWFLAKE CONNECTION -->
+      <section id="view-connection" class="view {% if active == 'connection' %}is-visible{% endif %}">
+        <h1>Snowflake Connection</h1>
         <fieldset class="connect-box">
-            <legend>Snowflake Connection</legend>
-            <label for="dsn-input">System DSN name</label>
-            <input type="text" id="dsn-input" placeholder="e.g. Snowflake_SSO" autocomplete="off">
-
-            <label for="username-input">Username</label>
-            <input type="text" id="username-input" placeholder="e.g. bawilliams@wearemoore.com" autocomplete="off">
-
-            <button id="connect-btn" type="button">Connect</button>
-            <div id="connect-status"></div>
+          <legend>Connect</legend>
+          <label for="dsn-input">System DSN name</label>
+          <input id="dsn-input" value="{{ form.dsn }}" placeholder="Snowflake_SSO">
+          <label for="username-input">Username</label>
+          <input id="username-input" value="{{ form.username }}" placeholder="Optional">
+          <button type="button" id="connect-btn">Connect</button>
+          <p id="connect-status">
+            {% if status.connected %}Connected via {{ status.dsn }}{% if status.username %} as {{ status.username }}{% endif %}.{% endif %}
+          </p>
         </fieldset>
+      </section>
 
-        <label for="search-input">Search schemas</label>
+      <!-- MODEL SEGMENT COMPARISON -->
+      <section id="view-comparison" class="view {% if active == 'comparison' %}is-visible{% endif %}">
+        <h1>Model Segment Comparison</h1>
+
+        <label for="search-input">Search Project by Keyword</label>
         <div class="search-row">
-            <input type="text" id="search-input" placeholder="e.g. Shriners" autocomplete="off">
-            <button id="search-btn" type="button">Search</button>
+          <input id="search-input" placeholder="Type a project name, then Search">
+          <button type="button" id="search-btn">Search</button>
         </div>
 
-        <label for="schema-select">Schema</label>
+        <label for="schema-select">Project</label>
         <select id="schema-select">
-            <option value="">Connect first</option>
+          <option value="">Select a project</option>
         </select>
+        <p id="schema-status"></p>
 
-        <label for="table-select">Tables</label>
+        <label for="table-select">Scoring Run</label>
         <select id="table-select" multiple size="6">
-            <option value="">Select a schema first</option>
+          <option value="">Select a project first</option>
         </select>
 
-        <button id="add-selected-btn" type="button" class="secondary-btn">Add Selected to List</button>
-
-        <form id="item-form">
-            <input type="text" id="item-input" placeholder="Add a new item..." autocomplete="off">
-            <button type="submit">Add</button>
-        </form>
+        <button type="button" id="add-selected-btn" class="secondary-btn">Add selected tables</button>
 
         <ul id="item-list">
-            {% for item in items %}
-            <li>
-                <span>{{ item }}</span>
-                <button class="delete-btn" data-index="{{ loop.index0 }}">✕</button>
-            </li>
-            {% endfor %}
+          {% for item in items %}
+          <li>
+            <span>{{ item }}</span>
+            <button type="button" class="delete-btn" data-index="{{ loop.index0 }}">✕</button>
+          </li>
+          {% endfor %}
         </ul>
 
-        <button id="run-analysis-btn" type="button" class="run-btn">Run Analysis</button>
-        <div id="analysis-status"></div>
-    </div>
+        <button type="button" id="run-analysis-btn" class="run-btn">Run Analysis</button>
+        <p id="analysis-status"></p>
+      </section>
 
-    <script>
-        // Seed the client-side item list with what the server rendered on page load
-        window.__INITIAL_ITEMS__ = {{ items | tojson }};
-    </script>
-    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+      <!-- MODEL FEATURE COMPARISON -->
+      <section id="view-features" class="view {% if active == 'features' %}is-visible{% endif %}">
+        <h1>Model Feature Comparison</h1>
+        <p class="view-lead">
+          For each selected model, take the top 20 features by importance, union
+          those names, and show every model’s importance side by side.
+        </p>
+
+        <label for="feature-search-input">Search Project by Keyword</label>
+        <div class="search-row">
+          <input id="feature-search-input" placeholder="Type a project name, then Search">
+          <button type="button" id="feature-search-btn">Search</button>
+        </div>
+
+        <label for="feature-schema-select">Project</label>
+        <select id="feature-schema-select">
+          <option value="">Select a project</option>
+        </select>
+        <p id="feature-schema-status"></p>
+
+        <label for="model-table-select">Model Run</label>
+        <select id="model-table-select" multiple size="6">
+          <option value="">Select a project first</option>
+        </select>
+
+        <button type="button" id="add-model-selected-btn" class="secondary-btn">Add feature tables</button>
+
+        <ul id="feature-item-list">
+          {% for item in feature_items %}
+          <li>
+            <span>{{ item }}</span>
+            <button type="button" class="delete-feature-btn" data-index="{{ loop.index0 }}">✕</button>
+          </li>
+          {% endfor %}
+        </ul>
+
+        <button type="button" id="run-features-btn" class="run-btn">Get Model Feature Analysis</button>
+        <p id="features-status"></p>
+        <div id="features-table-wrap" hidden>
+          <div class="results-panel">
+            <div class="results-toolbar">
+              <div>
+                <h2>Feature importance</h2>
+                <p class="table-caption">Blank cells mean the feature was not in that model’s top 20.</p>
+              </div>
+              <a id="features-download-link" class="download-btn" hidden>Download CSV</a>
+            </div>
+            <div class="table-scroll">
+              <table id="features-table"></table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+
+  <script>
+    window.__INITIAL_ITEMS__ = {{ items | tojson }};
+    window.__INITIAL_FEATURE_ITEMS__ = {{ feature_items | tojson }};
+    window.__ACTIVE_VIEW__ = {{ active | tojson }};
+  </script>
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
 </html>

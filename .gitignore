@@ -1,5 +1,14 @@
-.env
 venv/
+.venv/
 __pycache__/
-*.pyc
-generated/
+*.py[cod]
+*$py.class
+.env
+.flask_session/
+generated/*.pdf
+*.log
+.vscode/
+.idea/
+.DS_Store
+agent-tools/
+python_web_updated.zip

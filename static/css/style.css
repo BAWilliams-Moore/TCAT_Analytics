@@ -19,6 +19,25 @@ body {
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
 }
 
+.page:has(#view-features.is-visible) .container {
+    max-width: 1100px;
+}
+
+.view-lead,
+.table-caption {
+    font-size: 0.9rem;
+    color: #555;
+    line-height: 1.45;
+}
+
+.view-lead {
+    margin: 0 0 24px;
+}
+
+.table-caption {
+    margin: 16px 0 0;
+}
+
 h1 {
     margin-top: 0;
     font-size: 1.5rem;
@@ -104,17 +123,26 @@ label {
     background: #1f56b8;
 }
 
-#schema-select {
+#schema-select,
+#feature-schema-select {
     width: 100%;
     padding: 10px 12px;
     border: 1px solid #ddd;
     border-radius: 8px;
     font-size: 1rem;
-    margin-bottom: 24px;
+    margin-bottom: 8px;
     background: #fff;
 }
 
-#table-select {
+#schema-status,
+#feature-schema-status {
+    margin: 0 0 24px;
+    font-size: 0.85rem;
+    color: #555;
+}
+
+#table-select,
+#model-table-select {
     width: 100%;
     padding: 6px;
     border: 1px solid #ddd;
@@ -124,7 +152,8 @@ label {
     background: #fff;
 }
 
-#table-select option {
+#table-select option,
+#model-table-select option {
     padding: 6px 8px;
 }
 
@@ -151,7 +180,8 @@ label {
     cursor: not-allowed;
 }
 
-#analysis-status {
+#analysis-status,
+#features-status {
     margin-top: 14px;
     font-size: 0.9rem;
     color: #444;
@@ -208,13 +238,15 @@ label {
     background: #1f56b8;
 }
 
-#item-list {
+#item-list,
+#feature-item-list {
     list-style: none;
     padding: 0;
     margin: 0;
 }
 
-#item-list li {
+#item-list li,
+#feature-item-list li {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -222,7 +254,8 @@ label {
     border-bottom: 1px solid #eee;
 }
 
-#item-list li:last-child {
+#item-list li:last-child,
+#feature-item-list li:last-child {
     border-bottom: none;
 }
 
@@ -236,4 +269,157 @@ label {
 
 .delete-btn:hover {
     color: #d33;
+}
+
+/* Visible side menu — not a dropdown. Original card styles stay above. */
+html,
+body {
+    height: 100%;
+}
+
+body {
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    min-height: 100vh;
+}
+
+.sidebar {
+    width: 230px;
+    flex: 0 0 230px;
+    background: #0000FF;
+    color: #fff;
+    padding: 24px 16px;
+    min-height: 100vh;
+}
+
+.sidebar .brand {
+    font-size: 1.05rem;
+    font-weight: 700;
+    margin: 0 0 6px;
+}
+
+.sidebar .brand-kicker {
+    margin: 0 0 20px;
+    font-size: 0.75rem;
+    color: #ffd0d6;
+}
+
+.sidebar nav {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.sidebar a {
+    display: block;
+    color: #fff;
+    text-decoration: none;
+    padding: 10px 12px;
+    border-radius: 8px;
+}
+
+.sidebar a:hover,
+.sidebar a.is-active {
+    background: #1E90FF;
+}
+
+.sidebar-foot {
+    margin-top: 28px;
+    font-size: 0.8rem;
+    color: #ffd0d6;
+}
+
+.page {
+    flex: 1;
+    min-width: 0;
+    padding: 40px 20px;
+}
+
+.view {
+    display: none;
+}
+
+.view.is-visible {
+    display: block;
+}
+
+.table-scroll {
+    overflow-x: auto;
+    margin-top: 12px;
+}
+
+.results-panel {
+    margin-top: 20px;
+    padding: 16px;
+    border: 1px solid #e2e4e8;
+    border-radius: 10px;
+    background: #fafbfc;
+}
+
+.results-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.results-toolbar h2 {
+    margin: 0 0 4px;
+    font-size: 1.1rem;
+}
+
+.download-btn {
+    display: inline-block;
+    padding: 10px 14px;
+    border-radius: 8px;
+    background: #2d6cdf;
+    color: #fff;
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.download-btn:hover {
+    background: #1f56b8;
+}
+
+#features-status a {
+    color: #2d6cdf;
+    font-weight: 600;
+}
+
+#features-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+    background: #fff;
+}
+
+#features-table th,
+#features-table td {
+    border-bottom: 1px solid #eee;
+    padding: 8px 10px;
+    text-align: left;
+    white-space: nowrap;
+}
+
+#features-table thead th {
+    position: sticky;
+    top: 0;
+    background: #fff;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    color: #555;
+}
+
+#features-table tbody tr:nth-child(even) {
+    background: #f7f8fa;
+}
+
+#features-table td.num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
 }
