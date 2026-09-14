@@ -1,8 +1,8 @@
 # TCAT Analytics
 
-Flask GUI around the existing Snowflake ODBC workflow: connect once, pick scoring runs, then build pairwise `MODEL_SEGMENT` overlap heatmaps.
+Flask GUI around the existing Snowflake ODBC workflow: connect once, navigate through menu option to explore various analytics from existing TCAT models.
 
-The left side menu stays visible on every page (it is not a dropdown). It splits the original single page into three views:
+# Overview:
 
 - **Snowflake connection** — posts `dsn` and `username` to `/api/connect` and caches the ODBC session
 - **Model segment comparison** — project search, scoring-run picker, comparison list, and heatmap PDF download
