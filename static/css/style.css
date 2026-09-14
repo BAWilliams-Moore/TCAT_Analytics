@@ -302,7 +302,7 @@ body {
 .sidebar .brand-kicker {
     margin: 0 0 20px;
     font-size: 0.75rem;
-    color: #ffd0d6;
+    color: #fff;
 }
 
 .sidebar nav {
@@ -327,7 +327,7 @@ body {
 .sidebar-foot {
     margin-top: 28px;
     font-size: 0.8rem;
-    color: #ffd0d6;
+    color: #fff;
 }
 
 .page {
@@ -422,4 +422,14 @@ body {
 #features-table td.num {
     text-align: right;
     font-variant-numeric: tabular-nums;
+}
+
+#features-table td.overlap {
+    background: #fff3bf;
+    font-weight: 600;
+    color: #7a4f00;
+}
+#features-table td.overlap-feature {
+    background: #fff8e1;
+    font-weight: 600;
 }

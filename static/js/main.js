@@ -496,14 +496,25 @@ function renderFeatureTable(columns, rows, csvUrl) {
     const head = columns.map((col) => `<th>${escapeHtml(col)}</th>`).join("");
     const body = rows
         .map((row) => {
+            const overlapCount = row
+                .slice(1)
+                .filter((value) => value != null && value !== "")
+                .length;
+            const hasOverlap = overlapCount > 1;
             const cells = row
                 .map((value, index) => {
-                    if (index === 0) return `<td>${escapeHtml(value)}</td>`;
-                    const num = value == null || value === "" ? "" : Number(value).toFixed(4);
-                    return `<td class="num">${num}</td>`;
+                    if (index === 0) {
+                        const cls = hasOverlap ? ' class="overlap-feature"' : "";
+                        return `<td${cls}>${escapeHtml(value)}</td>`;
+                    }
+                    const empty = value == null || value === "";
+                    const num = empty ? "" : Number(value).toFixed(4);
+                    const cls = ["num"];
+                    if (hasOverlap && !empty) cls.push("overlap");
+                    return `<td class="${cls.join(" ")}">${num}</td>`;
                 })
                 .join("");
-            return `<tr>${cells}</tr>`;
+            return `<tr${hasOverlap ? ' class="has-overlap"' : ""}>${cells}</tr>`;
         })
         .join("");
     table.innerHTML = `<thead><tr>${head}</tr></thead><tbody>${body}</tbody>`;
