@@ -1,4 +1,4 @@
-# Segment Workbench
+# TCAT Analytics
 
 Flask GUI around the existing Snowflake ODBC workflow: connect once, pick scoring runs, then build pairwise `MODEL_SEGMENT` overlap heatmaps.
 
@@ -24,32 +24,18 @@ The app listens on [http://127.0.0.1:5000](http://127.0.0.1:5000). Do not use po
 
 Set `SNOWFLAKE_DSN` / `SNOWFLAKE_USER` in `.env`, or enter them on the connection page. The first Connect click is when the browser SSO prompt should appear.
 
-## Comparison tables
+## Model Segment Comparison
 
-Selected runs are stored as fully qualified names, matching the original items list:
+ Returns HeatMaps based on Scoring Runs selected, in a pairwise combination.
+ 
+ Numbers displayed are pid count/10,000 for every model segment combination, with the color scale centered on the mean.
 
-`{DATABASE}.{PROJECT}__{ACTIVITY}{SHORT_NAME}.S540_SEGMENTED` from `TCAT_CENTRAL.PUBLIC.RUNS`
-
-Analysis joins those tables on `PID` and writes one heatmap page per pair to `generated/`.
+ ![Model Segment Comparions Example](./images/heatmap_sample.png)
 
 ## Feature importance table
 
-Selected models are stored as fully qualified `FEATURE_METRICS` names from `TCAT_CENTRAL.PUBLIC.RUNS`:
+The Top 20 Features and Importance of the selected models are displayed in a table/grid format.
 
-`{DATABASE}.{PROJECT}__{ACTIVITY}{SHORT_NAME}.FEATURE_METRICS`
+This visual allows for identifying where models top 20 features overlap amongst the selected models.
 
-**Get Model Feature Analysis** runs this query for each selected model:
-
-```sql
-SELECT NAME AS FEATURE, VALUE AS IMPORTANCE
-FROM {table} F
-LEFT JOIN TCAT_CENTRAL.FEATURE_HANDLING.FEATURES_BACKPOPULATION D ON F.NAME = D.FEATURE_NAME
-WHERE METRIC = 'IMPORTANCE'
-QUALIFY ROW_NUMBER() OVER (PARTITION BY NAME ORDER BY IMPORTANCE DESC) = 1
-ORDER BY IMPORTANCE DESC
-LIMIT 20
-```
-
-Unique feature names are appended in first-seen order. Each model’s result is left-joined onto that list. Column headers are the schema names (`GIVING_IQ__M002`, `SHRINERS_MIDLEVEL_MODEL2__M004`, …). A blank cell means the feature was not in that model’s top 20.
-
-The comparison table is shown on the page. **Download CSV** saves the same table (Excel-friendly UTF-8 with BOM) under `generated/`.
+*Blank values mean that model did not have that feature in their Top 20
