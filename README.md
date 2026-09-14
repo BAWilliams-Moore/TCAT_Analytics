@@ -1,6 +1,6 @@
 # TCAT Analytics
 
-Web Interface (Flask GUI) where users can connect to Snowflake using ODBC connection, and navigate various analytics options using existing TCAT models.
+Web Interface (Flask GUI) where users can connect to Snowflake using ODBC connection, navigate various comparison analytics exploring existing TCAT models scores, features, gains, etc.
 
 ![TCAT Analytics GUI](./images/tcat_analytics_gui.png)
 
