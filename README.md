@@ -6,7 +6,7 @@ The left side menu stays visible on every page (it is not a dropdown). It splits
 
 - **Snowflake connection** — posts `dsn` and `username` to `/api/connect` and caches the ODBC session
 - **Model segment comparison** — project search, scoring-run picker, comparison list, and heatmap PDF download
-- **Model feature comparison** — project search, modeling-run picker, then a side-by-side importance table
+- **Model feature comparison** — project search, modeling-run picker, then a side-by-side importance table (w/csv download)
 
 ## Run locally
 
@@ -28,7 +28,7 @@ Set `SNOWFLAKE_DSN` / `SNOWFLAKE_USER` in `.env`, or enter them on the connectio
 
  Returns HeatMaps based on Scoring Runs selected, in a pairwise combination.
  
- Numbers displayed are pid count/10,000 for every model segment combination, with the color scale centered on the mean.
+ Numbers displayed are pid count/10,000 for every model segment combination, with the color scale centered on the mean. 
 
  ![Model Segment Comparions Example](./images/heatmap_sample.png)
 
@@ -38,4 +38,8 @@ The Top 20 Features and Importance of the selected models are displayed in a tab
 
 This visual allows for identifying where models top 20 features overlap amongst the selected models.
 
+Visual is displayed in the user interface as well a
+
 *Blank values mean that model did not have that feature in their Top 20
+
+![Feature Importance Example (Partially displayed)](./images/feature_importance_sample.png)
