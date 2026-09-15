@@ -7,13 +7,14 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
-  <aside class="sidebar" >
+  <aside class="sidebar">
     <p class="brand" style="font-size: 24px;">TCAT Analytics</p>
     <p class="brand-kicker">Moore · Internal</p>
     <nav aria-label="Primary">
       <a class="{% if active == 'connection' %}is-active{% endif %}" href="{{ url_for('connection') }}">Snowflake Connection</a>
       <a class="{% if active == 'comparison' %}is-active{% endif %}" href="{{ url_for('comparison') }}">Model Segments Comparison</a>
       <a class="{% if active == 'features' %}is-active{% endif %}" href="{{ url_for('features') }}">Model Features Comparison</a>
+      <a class="{% if active == 'gains' %}is-active{% endif %}" href="{{ url_for('gains') }}">Model Gains Comparison</a>
     </nav>
     <div class="sidebar-foot">
       <p>{{ nav_status.mode }}</p>
@@ -132,12 +133,67 @@
         </div>
       </section>
 
+      <!-- MODEL GAINS COMPARISON -->
+      <section id="view-gains" class="view {% if active == 'gains' %}is-visible{% endif %}">
+        <h1>Model Gains Comparison</h1>
+        <p class="view-lead">
+          For each selected model, take validation-set response-rate index by
+          segment, union those segments, and show every model’s index side by side.
+        </p>
+
+        <label for="gains-search-input">Search Project by Keyword</label>
+        <div class="search-row">
+          <input id="gains-search-input" placeholder="Type a project name, then Search">
+          <button type="button" id="gains-search-btn">Search</button>
+        </div>
+
+        <label for="gains-schema-select">Project</label>
+        <select id="gains-schema-select">
+          <option value="">Select a project</option>
+        </select>
+        <p id="gains-schema-status"></p>
+
+        <label for="gains-table-select">Model Run</label>
+        <select id="gains-table-select" multiple size="6">
+          <option value="">Select a project first</option>
+        </select>
+
+        <button type="button" id="add-gains-selected-btn" class="secondary-btn">Add gains tables</button>
+
+        <ul id="gains-item-list">
+          {% for item in gain_items %}
+          <li>
+            <span>{{ item }}</span>
+            <button type="button" class="delete-gains-btn" data-index="{{ loop.index0 }}">✕</button>
+          </li>
+          {% endfor %}
+        </ul>
+
+        <button type="button" id="run-gains-btn" class="run-btn">Get Model Gains Analysis</button>
+        <p id="gains-status"></p>
+        <div id="gains-table-wrap" hidden>
+          <div class="results-panel">
+            <div class="results-toolbar">
+              <div>
+                <h2>Response Rate Index</h2>
+                <p class="table-caption">Validation dataset only. Segment 99999 is excluded. Bars are scaled within each model column. The CSV is unformatted.</p>
+              </div>
+              <a id="gains-download-link" class="download-btn" hidden>Download CSV</a>
+            </div>
+            <div class="table-scroll">
+              <table id="gains-table"></table>
+            </div>
+          </div>
+        </div>
+      </section>
+
     </div>
   </div>
 
   <script>
     window.__INITIAL_ITEMS__ = {{ items | tojson }};
     window.__INITIAL_FEATURE_ITEMS__ = {{ feature_items | tojson }};
+    window.__INITIAL_GAIN_ITEMS__ = {{ gain_items | tojson }};
     window.__ACTIVE_VIEW__ = {{ active | tojson }};
   </script>
   <script src="{{ url_for('static', filename='js/main.js') }}"></script>

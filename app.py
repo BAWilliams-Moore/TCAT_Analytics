@@ -3,9 +3,9 @@ import re
 import traceback
 import uuid
 from decimal import Decimal
+
 import pandas as pd
 import matplotlib
-
 
 matplotlib.use("Agg")  # headless backend — no display available on the server
 import matplotlib.pyplot as plt
@@ -28,6 +28,7 @@ app = Flask(__name__)
 # In-memory data store (replace with a database for real use)
 items = []
 feature_items = []
+gain_items = []
 
 # Where generated analysis PDFs get saved so they can be downloaded
 OUTPUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "generated")
@@ -197,6 +198,7 @@ def _page(active):
         active=active,
         items=items,
         feature_items=feature_items,
+        gain_items=gain_items,
         form=form,
         status=status,
         nav_status=status,
@@ -221,6 +223,11 @@ def comparison():
 @app.route("/features")
 def features():
     return _page("features")
+
+
+@app.route("/gains")
+def gains():
+    return _page("gains")
 
 
 @app.route("/api/connect", methods=["POST"])
@@ -454,6 +461,36 @@ def get_feature_table():
         return jsonify({"error": "Failed to resolve feature table"}), 500
 
 
+@app.route("/api/gains_table", methods=["GET"])
+def get_gains_table():
+    """
+    PROJECT comes from #gains-schema-select. SHORT_NAME comes from
+    #gains-table-select. ACTIVITY is modeling ('M').
+    """
+    project = request.args.get("project", "").strip()
+    short_name = request.args.get("short_name", "").strip()
+    if not project or not short_name:
+        return jsonify({"error": "project and short_name are required."}), 400
+
+    query = """
+        SELECT DATABASE || '.' || PROJECT || '__' || ACTIVITY || SHORT_NAME || '.' || 'GAINS' AS GAINS_TABLE
+        FROM TCAT_CENTRAL.PUBLIC.RUNS
+        WHERE PROJECT = ? AND ACTIVITY = 'M' AND SHORT_NAME = ?
+    """
+    try:
+        conn = get_snowflake_connection()
+        cur = conn.cursor()
+        cur.execute(query, (project.upper(), short_name))
+        row = cur.fetchone()
+        cur.close()
+        if not row or not row[0]:
+            return jsonify({"error": "No gains table for that project and short_name."}), 404
+        return jsonify({"gains_table": row[0]})
+    except Exception as e:
+        app.logger.error(f"Snowflake query failed: {e}")
+        return jsonify({"error": "Failed to resolve gains table"}), 500
+
+
 @app.route("/api/items", methods=["GET"])
 def get_items():
     """Return all items as JSON."""
@@ -505,6 +542,30 @@ def delete_feature_item(index):
     return jsonify({"error": "Invalid index"}), 404
 
 
+@app.route("/api/gain_items", methods=["GET"])
+def get_gain_items():
+    return jsonify(gain_items)
+
+
+@app.route("/api/gain_items", methods=["POST"])
+def add_gain_item():
+    data = request.get_json()
+    text = (data or {}).get("text", "").strip()
+    if not text:
+        return jsonify({"error": "Text cannot be empty"}), 400
+    if text not in gain_items:
+        gain_items.append(text)
+    return jsonify({"items": gain_items}), 201
+
+
+@app.route("/api/gain_items/<int:index>", methods=["DELETE"])
+def delete_gain_item(index):
+    if 0 <= index < len(gain_items):
+        gain_items.pop(index)
+        return jsonify({"items": gain_items}), 200
+    return jsonify({"error": "Invalid index"}), 404
+
+
 FEATURE_IMPORTANCE_QUERIES = (
     """
     SELECT NAME AS FEATURE, VALUE AS IMPORTANCE
@@ -513,8 +574,7 @@ FEATURE_IMPORTANCE_QUERIES = (
     WHERE METRIC = 'IMPORTANCE'
     QUALIFY ROW_NUMBER() OVER (PARTITION BY NAME ORDER BY IMPORTANCE DESC) = 1
     ORDER BY IMPORTANCE DESC
-    LIMIT 20
-    """
+    LIMIT 20"""
 )
 
 
@@ -609,7 +669,6 @@ def fetch_feature_importance(conn, table):
         description = cursor.description
         rows = cursor.fetchall()
         df = dataframe_from_odbc_rows(rows, description)
-        print(df)
         return _normalize_feature_frame(df, table)
     except Exception as exc:
         errors.append(str(exc))
@@ -649,25 +708,12 @@ def assemble_feature_importance_table(model_frames):
         piece = df[["FEATURE", "IMPORTANCE"]].copy()
         piece.columns = ["FEATURE", label]
         frames.append(piece)
-        print(frames)
 
     master_df = pd.DataFrame({"FEATURE": feature_list})
     for frame in frames:
         master_df = pd.merge(master_df, frame, on="FEATURE", how="left")
-        print(master_df)
     return master_df
 
-
-def build_feature_importance_master(tables, conn):
-    """
-    For each selected model, run the FEATURE_METRICS query, append unseen
-    features, then join the per-model dataframes into one comparison table.
-    """
-    model_frames = []
-    for table in tables:
-        df = fetch_feature_importance(conn, table)
-        model_frames.append((extract_abbr(table), df))
-    return assemble_feature_importance_table(model_frames)
 
 def json_safe_value(value):
     """Convert a pandas/numpy/Decimal cell into something Flask can jsonify."""
@@ -699,6 +745,7 @@ def json_safe_value(value):
         return value
     return str(value)
 
+
 def master_df_to_table_payload(master_df):
     """Turn the joined importance table into JSON columns/rows."""
     columns = [str(col) for col in master_df.columns]
@@ -706,6 +753,18 @@ def master_df_to_table_payload(master_df):
     for record in master_df.itertuples(index=False, name=None):
         rows.append([json_safe_value(value) for value in record])
     return columns, rows
+
+
+def build_feature_importance_master(tables, conn):
+    """
+    For each selected model, run the FEATURE_METRICS query, append unseen
+    features, then join the per-model dataframes into one comparison table.
+    """
+    model_frames = []
+    for table in tables:
+        df = fetch_feature_importance(conn, table)
+        model_frames.append((extract_abbr(table), df))
+    return assemble_feature_importance_table(model_frames)
 
 
 @app.route("/api/run_features", methods=["POST"])
@@ -717,8 +776,8 @@ def run_features():
     data = request.get_json()
     tables = (data or {}).get("tables", [])
 
-    if len(tables) < 2:
-        return jsonify({"error": "Select at least two model to compare."}), 400
+    if len(tables) < 1:
+        return jsonify({"error": "Select at least one model to compare."}), 400
 
     try:
         conn = get_snowflake_connection()
@@ -730,9 +789,7 @@ def run_features():
         output_path = os.path.join(OUTPUT_DIR, filename)
         master_df.to_csv(output_path, index=False, encoding="utf-8-sig")
 
-        
         columns, rows = master_df_to_table_payload(master_df)
-
         return jsonify({
             "columns": columns,
             "rows": rows,
@@ -743,6 +800,159 @@ def run_features():
     except Exception as e:
         app.logger.error(f"Feature comparison failed: {e}\n{traceback.format_exc()}")
         return jsonify({"error": f"Feature comparison failed: {e}"}), 500
+
+
+GAINS_QUERIES = (
+    """
+    SELECT SEGMENT, RESPONSE_RATE_INDEX
+    FROM {table}
+    WHERE DISPLAY_DATASET = 'VAL'
+      AND SEGMENT IS NOT NULL
+      AND TO_VARCHAR(SEGMENT) <> '99999'
+      AND (PROMOTION_ID = -1 OR PROMOTION_ID IS NULL)
+    ORDER BY SEGMENT
+    """,
+    """
+    SELECT SEGMENT, RESPONSE_RATE_INDEX
+    FROM {table}
+    WHERE DISPLAY_DATASET = 'VAL'
+      AND SEGMENT IS NOT NULL
+      AND TO_VARCHAR(SEGMENT) <> '99999'
+      AND PROMOTION_ID = -1
+    ORDER BY SEGMENT
+    """,
+    """
+    SELECT SEGMENT, RESPONSE_RATE_INDEX
+    FROM {table}
+    WHERE DISPLAY_DATASET = 'VAL'
+      AND SEGMENT IS NOT NULL
+      AND TO_VARCHAR(SEGMENT) <> '99999'
+      AND PROMOTION_ID IS NULL
+    ORDER BY SEGMENT
+    """,
+    """
+    SELECT SEGMENT, RESPONSE_RATE_INDEX
+    FROM {table}
+    WHERE DISPLAY_DATASET = 'VAL'
+      AND SEGMENT IS NOT NULL
+      AND TO_VARCHAR(SEGMENT) <> '99999'
+    ORDER BY SEGMENT
+    """,
+)
+
+
+def _normalize_gains_frame(df, table):
+    df = df.copy()
+    df.columns = [str(col).upper() for col in df.columns]
+    if "SEGMENT" not in df.columns or "RESPONSE_RATE_INDEX" not in df.columns:
+        raise ValueError(f"Unexpected columns from {table}: {list(df.columns)}")
+    out = df[["SEGMENT", "RESPONSE_RATE_INDEX"]].copy()
+    out["SEGMENT"] = out["SEGMENT"].map(lambda value: None if value is None else str(value))
+    out["RESPONSE_RATE_INDEX"] = pd.to_numeric(out["RESPONSE_RATE_INDEX"], errors="coerce")
+    out = out.dropna(subset=["SEGMENT"])
+    out = out[out["SEGMENT"] != "99999"]
+    out = out.drop_duplicates(subset=["SEGMENT"], keep="first")
+    return out.reset_index(drop=True)
+
+
+def fetch_gains(conn, table):
+    """VAL-dataset RESPONSE_RATE_INDEX by SEGMENT for one GAINS table."""
+    if not TABLE_NAME.match(table):
+        raise ValueError(f"Invalid table name: {table}")
+
+    errors = []
+    for sql in GAINS_QUERIES:
+        query = sql.format(table=table)
+        cursor = conn.cursor()
+        try:
+            cursor.execute(query)
+            description = cursor.description
+            rows = cursor.fetchall()
+            df = dataframe_from_odbc_rows(rows, description)
+            return _normalize_gains_frame(df, table)
+        except Exception as exc:
+            errors.append(str(exc))
+            app.logger.warning(f"Gains query failed for {table}: {exc}")
+        finally:
+            try:
+                cursor.close()
+            except Exception:
+                pass
+
+    raise RuntimeError(f"Could not read gains from {table}: {' | '.join(errors)}")
+
+
+def assemble_gains_table(model_frames):
+    """
+    Grow a unique segment_list in first-seen order, left-join each model's
+    SEGMENT / RESPONSE_RATE_INDEX frame, and label columns with the model schema.
+    """
+    segment_list = []
+    frames = []
+    used_labels = {}
+
+    for label, df in model_frames:
+        if label in used_labels:
+            used_labels[label] += 1
+            label = f"{label}_{used_labels[label]}"
+        else:
+            used_labels[label] = 1
+
+        for item in df["SEGMENT"].tolist():
+            if item not in segment_list:
+                segment_list.append(item)
+
+        piece = df[["SEGMENT", "RESPONSE_RATE_INDEX"]].copy()
+        piece.columns = ["SEGMENT", label]
+        frames.append(piece)
+
+    master_df = pd.DataFrame({"SEGMENT": segment_list})
+    for frame in frames:
+        master_df = pd.merge(master_df, frame, on="SEGMENT", how="left")
+    return master_df
+
+
+def build_gains_master(tables, conn):
+    model_frames = []
+    for table in tables:
+        df = fetch_gains(conn, table)
+        model_frames.append((extract_abbr(table), df))
+    return assemble_gains_table(model_frames)
+
+
+@app.route("/api/run_gains", methods=["POST"])
+def run_gains():
+    """
+    Run the GAINS query for each selected model, append unique segments,
+    join the per-model frames, and return a table.
+    """
+    data = request.get_json()
+    tables = (data or {}).get("tables", [])
+
+    if len(tables) < 1:
+        return jsonify({"error": "Select at least one model to compare."}), 400
+
+    try:
+        conn = get_snowflake_connection()
+        master_df = build_gains_master(tables, conn)
+        if master_df.empty:
+            return jsonify({"error": "No gains rows found for the selected models."}), 400
+
+        filename = f"gains_comparison_{uuid.uuid4().hex[:8]}.csv"
+        output_path = os.path.join(OUTPUT_DIR, filename)
+        master_df.to_csv(output_path, index=False, encoding="utf-8-sig")
+
+        columns, rows = master_df_to_table_payload(master_df)
+        return jsonify({
+            "columns": columns,
+            "rows": rows,
+            "model_count": len(tables),
+            "segment_count": int(len(master_df)),
+            "csv_url": f"/download/{filename}",
+        })
+    except Exception as e:
+        app.logger.error(f"Gains comparison failed: {e}\n{traceback.format_exc()}")
+        return jsonify({"error": f"Gains comparison failed: {e}"}), 500
 
 
 @app.route("/api/run_analysis", methods=["POST"])
