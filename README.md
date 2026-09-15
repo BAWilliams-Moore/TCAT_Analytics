@@ -9,6 +9,8 @@ Web Interface (Flask GUI) where users can connect to Snowflake using ODBC connec
 - **Snowflake connection** — posts `dsn` and `username` to `/api/connect` and caches the ODBC session
 - **Model segment comparison** — project search, scoring-run picker, comparison list, and heatmap PDF download
 - **Model feature comparison** — project search, modeling-run picker, then a side-by-side feature importance (Top 20) table (w/csv download)
+- **Gains comparison** — project search, modeling-run picker, then a side-by-side gains comparison table (w/csv download)
+
 
 ## Run locally
 
@@ -43,3 +45,9 @@ This visual allows for identifying where models top 20 features overlap amongst 
 *Blank values mean that model did not have that feature in their Top 20
 
 ![Feature Importance Example (Partially displayed)](./images/feature_importance_sample.png)
+
+## Gains Comparison
+
+Validation Gains - Response Rate Index comparison between users selected modeling runs.
+
+![Gains](./images/gains.png)

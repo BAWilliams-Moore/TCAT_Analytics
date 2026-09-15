@@ -14,6 +14,13 @@ const runAnalysisBtn = document.getElementById("run-analysis-btn");
 const analysisStatus = document.getElementById("analysis-status");
 const runFeaturesBtn = document.getElementById("run-features-btn");
 const featuresStatus = document.getElementById("features-status");
+const gainsSchemaSelect = document.getElementById("gains-schema-select");
+const gainsSearchInput = document.getElementById("gains-search-input");
+const gainsSearchBtn = document.getElementById("gains-search-btn");
+const gainsTableSelect = document.getElementById("gains-table-select");
+const gainsList = document.getElementById("gains-item-list");
+const runGainsBtn = document.getElementById("run-gains-btn");
+const gainsStatus = document.getElementById("gains-status");
 const dsnInput = document.getElementById("dsn-input");
 const usernameInput = document.getElementById("username-input");
 const connectBtn = document.getElementById("connect-btn");
@@ -21,6 +28,7 @@ const connectStatus = document.getElementById("connect-status");
 
 let currentItems = window.__INITIAL_ITEMS__ || [];
 let currentFeatureItems = window.__INITIAL_FEATURE_ITEMS__ || [];
+let currentGainItems = window.__INITIAL_GAIN_ITEMS__ || [];
 
 async function loadTables(schemaValue) {
     if (!tableSelect) return;
@@ -57,14 +65,14 @@ async function loadTables(schemaValue) {
     }
 }
 
-async function loadModels(schemaValue) {
-    if (!modelTableSelect) return;
+async function loadModels(schemaValue, selectEl = modelTableSelect) {
+    if (!selectEl) return;
     if (!schemaValue) {
-        modelTableSelect.innerHTML = '<option value="">Select a project first</option>';
+        selectEl.innerHTML = '<option value="">Select a project first</option>';
         return;
     }
 
-    modelTableSelect.innerHTML = '<option value="">Loading models...</option>';
+    selectEl.innerHTML = '<option value="">Loading models...</option>';
 
     try {
         const res = await fetch(`/api/models?schema=${encodeURIComponent(schemaValue)}`);
@@ -72,9 +80,9 @@ async function loadModels(schemaValue) {
         const models = await res.json();
         if (!Array.isArray(models)) throw new Error(models.error || "Request failed");
 
-        modelTableSelect.innerHTML = "";
+        selectEl.innerHTML = "";
         if (models.length === 0) {
-            modelTableSelect.innerHTML = '<option value="">No models found</option>';
+            selectEl.innerHTML = '<option value="">No models found</option>';
             return;
         }
 
@@ -84,10 +92,10 @@ async function loadModels(schemaValue) {
             const option = document.createElement("option");
             option.value = shortName;
             option.textContent = modeling;
-            modelTableSelect.appendChild(option);
+            selectEl.appendChild(option);
         });
     } catch (err) {
-        modelTableSelect.innerHTML = '<option value="">Failed to load models</option>';
+        selectEl.innerHTML = '<option value="">Failed to load models</option>';
         console.error(err);
     }
 }
@@ -100,7 +108,13 @@ if (schemaSelect) {
 
 if (featureSchemaSelect) {
     featureSchemaSelect.addEventListener("change", () => {
-        loadModels(featureSchemaSelect.value);
+        loadModels(featureSchemaSelect.value, modelTableSelect);
+    });
+}
+
+if (gainsSchemaSelect) {
+    gainsSchemaSelect.addEventListener("change", () => {
+        loadModels(gainsSchemaSelect.value, gainsTableSelect);
     });
 }
 
@@ -128,6 +142,38 @@ if (addSelectedBtn) {
                     throw new Error(data.error || "Could not resolve table name.");
                 }
                 await addItem(data.segmented_table);
+            } catch (err) {
+                alert(err.message);
+                console.error(err);
+            }
+        }
+    });
+}
+
+const addGainsSelectedBtn = document.getElementById("add-gains-selected-btn");
+
+if (addGainsSelectedBtn) {
+    addGainsSelectedBtn.addEventListener("click", async () => {
+        const project = gainsSchemaSelect.value;
+        const shortNames = Array.from(gainsTableSelect.selectedOptions)
+            .map((opt) => opt.value)
+            .filter(Boolean);
+
+        if (!project || shortNames.length === 0) {
+            alert("Select a project and at least one model run first.");
+            return;
+        }
+
+        for (const shortName of shortNames) {
+            try {
+                const res = await fetch(
+                    `/api/gains_table?project=${encodeURIComponent(project)}&short_name=${encodeURIComponent(shortName)}`
+                );
+                const data = await res.json();
+                if (!res.ok || !data.gains_table) {
+                    throw new Error(data.error || "Could not resolve gains table.");
+                }
+                await addGainItem(data.gains_table);
             } catch (err) {
                 alert(err.message);
                 console.error(err);
@@ -170,6 +216,7 @@ if (addModelSelectedBtn) {
 
 const schemaStatus = document.getElementById("schema-status");
 const featureSchemaStatus = document.getElementById("feature-schema-status");
+const gainsSchemaStatus = document.getElementById("gains-schema-status");
 
 async function loadSchemas(searchTerm = "", options = {}) {
     const {
@@ -252,7 +299,18 @@ if (featureSearchBtn) {
             select: featureSchemaSelect,
             statusEl: featureSchemaStatus,
             activity: "M",
-            onClear: () => loadModels(""),
+            onClear: () => loadModels("", modelTableSelect),
+        });
+    });
+}
+
+if (gainsSearchBtn) {
+    gainsSearchBtn.addEventListener("click", () => {
+        loadSchemas(gainsSearchInput.value.trim(), {
+            select: gainsSchemaSelect,
+            statusEl: gainsSchemaStatus,
+            activity: "M",
+            onClear: () => loadModels("", gainsTableSelect),
         });
     });
 }
@@ -268,6 +326,20 @@ if (featureSearchInput) {
     featureSearchInput.addEventListener("input", () => {
         clearTimeout(featureSearchTimer);
         featureSearchTimer = setTimeout(() => featureSearchBtn.click(), 250);
+    });
+}
+
+if (gainsSearchInput) {
+    gainsSearchInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            gainsSearchBtn.click();
+        }
+    });
+    let gainsSearchTimer;
+    gainsSearchInput.addEventListener("input", () => {
+        clearTimeout(gainsSearchTimer);
+        gainsSearchTimer = setTimeout(() => gainsSearchBtn.click(), 250);
     });
 }
 
@@ -306,6 +378,25 @@ function renderFeatureItems(items) {
         li.appendChild(span);
         li.appendChild(btn);
         featureList.appendChild(li);
+    });
+}
+
+function renderGainItems(items) {
+    currentGainItems = items;
+    if (!gainsList) return;
+    gainsList.innerHTML = "";
+    items.forEach((item, index) => {
+        const li = document.createElement("li");
+        const span = document.createElement("span");
+        span.textContent = item;
+        const btn = document.createElement("button");
+        btn.textContent = "✕";
+        btn.className = "delete-gains-btn";
+        btn.dataset.index = index;
+        btn.addEventListener("click", () => deleteGainItem(index));
+        li.appendChild(span);
+        li.appendChild(btn);
+        gainsList.appendChild(li);
     });
 }
 
@@ -349,6 +440,26 @@ async function deleteFeatureItem(index) {
     }
 }
 
+async function addGainItem(text) {
+    const res = await fetch("/api/gain_items", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text }),
+    });
+    if (res.ok) {
+        const data = await res.json();
+        renderGainItems(data.items);
+    }
+}
+
+async function deleteGainItem(index) {
+    const res = await fetch(`/api/gain_items/${index}`, { method: "DELETE" });
+    if (res.ok) {
+        const data = await res.json();
+        renderGainItems(data.items);
+    }
+}
+
 if (form) {
     form.addEventListener("submit", (e) => {
         e.preventDefault();
@@ -366,6 +477,10 @@ document.querySelectorAll(".delete-btn").forEach((btn) => {
 
 document.querySelectorAll(".delete-feature-btn").forEach((btn) => {
     btn.addEventListener("click", () => deleteFeatureItem(Number(btn.dataset.index)));
+});
+
+document.querySelectorAll(".delete-gains-btn").forEach((btn) => {
+    btn.addEventListener("click", () => deleteGainItem(Number(btn.dataset.index)));
 });
 
 if (connectBtn) {
@@ -408,7 +523,15 @@ if (connectBtn) {
                     select: featureSchemaSelect,
                     statusEl: featureSchemaStatus,
                     activity: "M",
-                    onClear: () => loadModels(""),
+                    onClear: () => loadModels("", modelTableSelect),
+                });
+            }
+            if (gainsSchemaSelect) {
+                loadSchemas(gainsSearchInput ? gainsSearchInput.value.trim() : "", {
+                    select: gainsSchemaSelect,
+                    statusEl: gainsSchemaStatus,
+                    activity: "M",
+                    onClear: () => loadModels("", gainsTableSelect),
                 });
             }
         } catch (err) {
@@ -487,12 +610,40 @@ function buildFeatureCsv(columns, rows) {
     return `${header}\r\n${body}\r\n`;
 }
 
-function renderFeatureTable(columns, rows, csvUrl) {
-    const wrap = document.getElementById("features-table-wrap");
-    const table = document.getElementById("features-table");
-    const downloadLink = document.getElementById("features-download-link");
+const DATABAR_COLORS = [
+    "rgba(45, 108, 223, 0.38)",
+    "rgba(200, 16, 46, 0.32)",
+    "rgba(26, 143, 76, 0.35)",
+    "rgba(196, 120, 16, 0.38)",
+    "rgba(102, 51, 153, 0.32)",
+    "rgba(0, 128, 128, 0.32)",
+];
+
+function columnMaxes(rows) {
+    const maxes = [];
+    if (!rows.length) return maxes;
+    const width = rows[0].length;
+    for (let index = 1; index < width; index += 1) {
+        let max = 0;
+        rows.forEach((row) => {
+            const value = row[index];
+            if (value == null || value === "") return;
+            const number = Number(value);
+            if (!Number.isNaN(number) && number > max) max = number;
+        });
+        maxes[index] = max;
+    }
+    return maxes;
+}
+
+function renderComparisonTable(columns, rows, csvUrl, ids, downloadName, options = {}) {
+    const wrap = document.getElementById(ids.wrap);
+    const table = document.getElementById(ids.table);
+    const downloadLink = document.getElementById(ids.download);
     if (!wrap || !table) return;
 
+    const mode = options.mode || "overlap";
+    const maxes = mode === "databars" ? columnMaxes(rows) : [];
     const head = columns.map((col) => `<th>${escapeHtml(col)}</th>`).join("");
     const body = rows
         .map((row) => {
@@ -500,7 +651,7 @@ function renderFeatureTable(columns, rows, csvUrl) {
                 .slice(1)
                 .filter((value) => value != null && value !== "")
                 .length;
-            const hasOverlap = overlapCount > 1;
+            const hasOverlap = mode === "overlap" && overlapCount > 1;
             const cells = row
                 .map((value, index) => {
                     if (index === 0) {
@@ -509,6 +660,13 @@ function renderFeatureTable(columns, rows, csvUrl) {
                     }
                     const empty = value == null || value === "";
                     const num = empty ? "" : Number(value).toFixed(4);
+                    if (mode === "databars") {
+                        if (empty) return `<td class="num"></td>`;
+                        const max = maxes[index] || 0;
+                        const pct = max > 0 ? Math.max(0, Math.min(100, (Number(value) / max) * 100)) : 0;
+                        const color = DATABAR_COLORS[(index - 1) % DATABAR_COLORS.length];
+                        return `<td class="num databar"><span class="databar-fill" style="width:${pct.toFixed(1)}%;background:${color}"></span><span class="databar-value">${num}</span></td>`;
+                    }
                     const cls = ["num"];
                     if (hasOverlap && !empty) cls.push("overlap");
                     return `<td class="${cls.join(" ")}">${num}</td>`;
@@ -532,11 +690,40 @@ function renderFeatureTable(columns, rows, csvUrl) {
             downloadLink.href = objectUrl;
             downloadLink.dataset.objectUrl = objectUrl;
         }
-        downloadLink.setAttribute("download", "feature_importance.csv");
+        downloadLink.setAttribute("download", downloadName);
         downloadLink.hidden = false;
     }
 
     wrap.hidden = false;
+}
+
+function renderFeatureTable(columns, rows, csvUrl) {
+    renderComparisonTable(
+        columns,
+        rows,
+        csvUrl,
+        {
+            wrap: "features-table-wrap",
+            table: "features-table",
+            download: "features-download-link",
+        },
+        "feature_importance.csv"
+    );
+}
+
+function renderGainsTable(columns, rows, csvUrl) {
+    renderComparisonTable(
+        columns,
+        rows,
+        csvUrl,
+        {
+            wrap: "gains-table-wrap",
+            table: "gains-table",
+            download: "gains-download-link",
+        },
+        "gains_comparison.csv",
+        { mode: "databars" }
+    );
 }
 
 if (runFeaturesBtn) {
@@ -579,6 +766,46 @@ if (runFeaturesBtn) {
     });
 }
 
+if (runGainsBtn) {
+    runGainsBtn.addEventListener("click", async () => {
+        if (currentGainItems.length < 1) {
+            gainsStatus.textContent = "Add at least one model before running comparison.";
+            return;
+        }
+
+        runGainsBtn.disabled = true;
+        gainsStatus.textContent = `Loading validation gains for ${currentGainItems.length} model${currentGainItems.length === 1 ? "" : "s"}...`;
+        const wrap = document.getElementById("gains-table-wrap");
+        const downloadLink = document.getElementById("gains-download-link");
+        if (wrap) wrap.hidden = true;
+        if (downloadLink) downloadLink.hidden = true;
+
+        try {
+            const res = await fetch("/api/run_gains", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ tables: currentGainItems }),
+            });
+            const data = await res.json();
+
+            if (!res.ok) {
+                gainsStatus.textContent = data.error || "Comparison failed.";
+                return;
+            }
+
+            renderGainsTable(data.columns, data.rows, data.csv_url);
+            gainsStatus.innerHTML =
+                `${data.segment_count} segments across ${data.model_count} model${data.model_count === 1 ? "" : "s"}.` +
+                (data.csv_url ? ` <a href="${data.csv_url}">Download CSV</a>` : "");
+        } catch (err) {
+            gainsStatus.textContent = "Comparison failed. Check the server console for details.";
+            console.error(err);
+        } finally {
+            runGainsBtn.disabled = false;
+        }
+    });
+}
+
 if (window.__ACTIVE_VIEW__ === "comparison" && schemaSelect) {
     loadSchemas(searchInput ? searchInput.value.trim() : "", {
         select: schemaSelect,
@@ -593,6 +820,15 @@ if (window.__ACTIVE_VIEW__ === "features" && featureSchemaSelect) {
         select: featureSchemaSelect,
         statusEl: featureSchemaStatus,
         activity: "M",
-        onClear: () => loadModels(""),
+        onClear: () => loadModels("", modelTableSelect),
+    });
+}
+
+if (window.__ACTIVE_VIEW__ === "gains" && gainsSchemaSelect) {
+    loadSchemas(gainsSearchInput ? gainsSearchInput.value.trim() : "", {
+        select: gainsSchemaSelect,
+        statusEl: gainsSchemaStatus,
+        activity: "M",
+        onClear: () => loadModels("", gainsTableSelect),
     });
 }
