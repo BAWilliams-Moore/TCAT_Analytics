@@ -10,5 +10,6 @@ generated/*.pdf
 .vscode/
 .idea/
 .DS_Store
+generated
 agent-tools/
-python_web_updated.zip
+notes
