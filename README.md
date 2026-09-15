@@ -48,6 +48,6 @@ This visual allows for identifying where models top 20 features overlap amongst 
 
 ## Gains Comparison
 
-Validation Gains - Response Rate Index comparison between users selected modeling runs.
+Validation Gains - Response Rate Index comparison between selected modeling runs.
 
 ![Gains](./images/gains.png)
